@@ -172,3 +172,8 @@ SyncAgent/
 - Фото контактов не синхронизируются
 - Адреса не синхронизируются (ограничение API Windows.Phone.PersonalInformation)
 - Google CardDAV устарел и не используется — только People API
+
+## Благодарности
+
+Код для работы с People API в этом приложении и сама идея создания этого приложения основаны на коде пользователя @Computershik73 для соответствующих приложений под W10M https://github.com/Computershik73/WPGContacts и Symbian https://github.com/Computershik73/SymGContacts
+Другие его программы можно найти здесь https://t.me/cmplog
