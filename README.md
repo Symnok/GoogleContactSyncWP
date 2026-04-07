@@ -168,6 +168,11 @@ Phones with no label default to **mobile**. Emails with no label default to **ho
 ## Limitations
 
 - No Store distribution — sideload only
+
+## Credits
+PeopleAPI code of this app is based on and inspired by user @Computershik73 code of corresponding applications for W10M https://github.com/Computershik73/WPGContacts and Symbian https://github.com/Computershik73/SymGContacts
+
+Check his other programms here https://t.me/cmplog
 - Background sync minimum interval: 30 minutes (OS enforced)
 - Contact photos not synced
 - Address fields not synced (WP8.1 PersonalInformation API limitation)
