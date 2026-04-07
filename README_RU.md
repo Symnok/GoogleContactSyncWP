@@ -175,4 +175,5 @@ SyncAgent/
 ## Благодарности
 
 Код для работы с People API в этом приложении и сама идея создания этого приложения основаны на коде пользователя @Computershik73 для соответствующих приложений под W10M https://github.com/Computershik73/WPGContacts и Symbian https://github.com/Computershik73/SymGContacts
+
 Другие его программы можно найти здесь https://t.me/cmplog
