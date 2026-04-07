@@ -82,6 +82,7 @@ namespace GoogleContactSyncWP
                             FileMode.Open, FileAccess.Read))
                         using (var reader = new StreamReader(stream))
                         {
+                            Log("Found in IsolatedStorage: " + files[0]);
                             ParseCredentials(reader.ReadToEnd());
                             return;
                         }
@@ -103,14 +104,12 @@ namespace GoogleContactSyncWP
             {
                 "D:\\",
                 "D:\\Documents",
-                "D:\\Downloads",
-                "E:\\",
-                "E:\\Documents",
-                "E:\\Downloads",
-                "D:\\Documents",
                 "C:\\Data\\Users\\Public",
                 "C:\\Data\\Users\\Public\\Documents",
                 "C:\\Data\\Users\\Public\\Downloads",
+                "E:\\",
+                "E:\\Documents",
+                "E:\\Downloads"
             };
 
             foreach (string dir in searchDirs)
@@ -186,6 +185,90 @@ namespace GoogleContactSyncWP
             if (!string.IsNullOrEmpty(clientId))     TxtClientId.Text         = clientId;
             if (!string.IsNullOrEmpty(secret))       TxtClientSecret.Password = secret;
             TxtLoginStatus.Text = "Credentials loaded.";
+            Log("Credentials loaded from JSON.");
+            Log("  ClientId: " + MaskValue(clientId));
+        }
+
+        // ================================================================
+        // DIAGNOSTIC — dump all known paths
+        // ================================================================
+        private void BtnDumpPaths_Click(object sender, RoutedEventArgs e)
+        {
+            DumpPaths();
+            MainPivot.SelectedIndex = 3; // Switch to Log tab
+        }
+
+        private void DumpPaths()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== Environment.SpecialFolder ===");
+            // Only these SpecialFolder values exist in WP8.1 Silverlight
+            var folders = new[]
+            {
+                Environment.SpecialFolder.Personal,
+                Environment.SpecialFolder.ApplicationData,
+            };
+            foreach (var f in folders)
+            {
+                try
+                {
+                    string path = Environment.GetFolderPath(f);
+                    bool exists = !string.IsNullOrEmpty(path) &&
+                                  System.IO.Directory.Exists(path);
+                    sb.AppendLine(f + ":");
+                    sb.AppendLine("  " + (string.IsNullOrEmpty(path)
+                        ? "(empty)" : path) +
+                        (exists ? " [OK]" : " [missing]"));
+                }
+                catch (Exception ex) { sb.AppendLine(f + ": " + ex.Message); }
+            }
+
+            sb.AppendLine("=== Environment (other) ===");
+            try { sb.AppendLine("OSVersion: " + Environment.OSVersion); } catch { }
+            try { sb.AppendLine("CurrentDir: " + Environment.CurrentDirectory); } catch { }
+
+            sb.AppendLine("=== IsolatedStorage backing path ===");
+            try
+            {
+                using (var store = System.IO.IsolatedStorage
+                    .IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    var fi = store.GetType().GetField("m_AppFilesPath",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance);
+                    string path = fi != null
+                        ? fi.GetValue(store) as string : "field not found";
+                    sb.AppendLine(path ?? "(null)");
+                }
+            }
+            catch (Exception ex) { sb.AppendLine("Error: " + ex.Message); }
+
+            sb.AppendLine("=== Known paths exists check ===");
+            string[] paths = {
+                "C:\\", "C:\\Data", "C:\\Data\\Users",
+                "C:\\Data\\Users\\Public",
+                "C:\\Data\\Users\\Public\\Documents",
+                "C:\\Data\\Users\\DefApps",
+                "D:\\", "D:\\Documents",
+                "E:\\", "E:\\Documents"
+            };
+            foreach (string p in paths)
+            {
+                try
+                {
+                    bool ex = System.IO.Directory.Exists(p);
+                    sb.AppendLine(p + ": " + (ex ? "YES" : "no"));
+                }
+                catch (Exception ex) { sb.AppendLine(p + ": ERR " + ex.Message); }
+            }
+
+            TxtLoginStatus.Text = sb.ToString();
+
+            // Also send to log tab
+            Log("=== PATH DUMP ===");
+            foreach (string line in sb.ToString().Split('\n'))
+                if (!string.IsNullOrEmpty(line.Trim()))
+                    Log(line.TrimEnd());
         }
 
         // ================================================================
@@ -281,8 +364,6 @@ namespace GoogleContactSyncWP
         private void BtnGoogleToPhone_Click(object sender, RoutedEventArgs e)
         {
             SetUiBusy(true);
-            _log.Clear();
-            Dispatcher.BeginInvoke(() => TxtLog.Text = "");
             Log("=== Google→Phone: " + DateTime.Now.ToString("HH:mm:ss") + " ===");
 
             string clientId     = CredentialStorage.LoadClientId();
@@ -397,6 +478,7 @@ namespace GoogleContactSyncWP
                 }
                 finally
                 {
+                    FlushLog();
                     Dispatcher.BeginInvoke(() => SetUiBusy(false));
                 }
             });
@@ -408,8 +490,6 @@ namespace GoogleContactSyncWP
         private void BtnPhoneToGoogle_Click(object sender, RoutedEventArgs e)
         {
             SetUiBusy(true);
-            _log.Clear();
-            Dispatcher.BeginInvoke(() => TxtLog.Text = "");
             Log("=== Phone→Google: " + DateTime.Now.ToString("HH:mm:ss") + " ===");
 
             string clientId     = CredentialStorage.LoadClientId();
@@ -553,6 +633,13 @@ namespace GoogleContactSyncWP
             });
         }
 
+        private string MaskValue(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "(empty)";
+            int show = Math.Min(6, s.Length);
+            return s.Substring(0, show) + "***";
+        }
+
         private string GetProp(IDictionary<string, object> props, string key)
         {
             return props.ContainsKey(key) ? props[key] as string ?? "" : "";
@@ -612,6 +699,7 @@ namespace GoogleContactSyncWP
         private void BtnClearLog_Click(object sender, RoutedEventArgs e)
         {
             _log.Clear();
+            System.Threading.Interlocked.Exchange(ref _pendingLogUpdate, 0);
             Dispatcher.BeginInvoke(() => TxtLog.Text = "");
         }
 
@@ -757,18 +845,36 @@ namespace GoogleContactSyncWP
         }
 
         // ================================================================
-        // LOGGING — updates screen in real time
+        // LOGGING — batched UI updates to avoid overwhelming UI thread
         // ================================================================
+        private int _pendingLogUpdate = 0;
+
         private void Log(string msg)
         {
             string line = DateTime.Now.ToString("HH:mm:ss") + " " + msg;
             _log.AppendLine(line);
-            // Update UI on UI thread
+
+            // Only dispatch if no pending update already queued
+            if (System.Threading.Interlocked.Exchange(ref _pendingLogUpdate, 1) == 0)
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    System.Threading.Interlocked.Exchange(ref _pendingLogUpdate, 0);
+                    TxtLog.Text = _log.ToString();
+                    LogScroller.ScrollToVerticalOffset(
+                        LogScroller.ScrollableHeight);
+                });
+            }
+        }
+
+        private void FlushLog()
+        {
+            // Force a final UI update after sync completes
             Dispatcher.BeginInvoke(() =>
             {
-                TxtLog.Text += line + "\n";
-                // Auto-scroll to bottom
-                LogScroller.ScrollToVerticalOffset(LogScroller.ScrollableHeight);
+                TxtLog.Text = _log.ToString();
+                LogScroller.ScrollToVerticalOffset(
+                    LogScroller.ScrollableHeight);
             });
         }
 

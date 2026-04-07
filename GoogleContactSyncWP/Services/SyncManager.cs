@@ -76,9 +76,14 @@ namespace GoogleContactSyncWP.Services
             if (progress != null)
                 progress("Processing " + googleContacts.Count + " Google contacts...");
 
+            int contactIdx = 0;
             foreach (var gc in googleContacts)
             {
                 if (string.IsNullOrEmpty(gc.Id)) continue;
+                contactIdx++;
+                if (contactIdx % 10 == 0 && progress != null)
+                    progress("Processing " + contactIdx + "/" +
+                        googleContacts.Count + "...");
 
                 bool hasState   = state.ContainsKey(gc.Id);
                 var  savedState = hasState ? state[gc.Id] : null;

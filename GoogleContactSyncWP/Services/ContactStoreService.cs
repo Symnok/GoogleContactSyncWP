@@ -12,11 +12,15 @@ namespace GoogleContactSyncWP.Services
 {
     public class ContactStoreService
     {
+        private ContactStore _store;
+
         private async Task<ContactStore> GetStoreAsync()
         {
-            return await ContactStore.CreateOrOpenAsync(
-                ContactStoreSystemAccessMode.ReadWrite,
-                ContactStoreApplicationAccessMode.ReadOnly);
+            if (_store == null)
+                _store = await ContactStore.CreateOrOpenAsync(
+                    ContactStoreSystemAccessMode.ReadWrite,
+                    ContactStoreApplicationAccessMode.ReadOnly);
+            return _store;
         }
 
         // ================================================================

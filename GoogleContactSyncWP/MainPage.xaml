@@ -72,6 +72,12 @@
                         </StackPanel>
                     </Border>
 
+                    <Button Content="Dump paths (diagnostic)"
+                            HorizontalAlignment="Stretch"
+                            Height="56" FontSize="14"
+                            Click="BtnDumpPaths_Click"
+                            Margin="0,8,0,0"/>
+
                     <TextBlock x:Name="TxtLoginStatus"
                                FontSize="14" TextWrapping="Wrap"
                                Foreground="#FF4444" Margin="0,4,0,0"/>
