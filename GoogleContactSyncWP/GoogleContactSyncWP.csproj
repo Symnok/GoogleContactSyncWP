@@ -19,7 +19,7 @@
     </SupportedCultures>
     <XapOutputs>true</XapOutputs>
     <GenerateSilverlightManifest>true</GenerateSilverlightManifest>
-    <XapFilename>GoogleContactSyncWP_$(Configuration)_$(Platform).xap</XapFilename>
+    <XapFilename>GContactsSync.xap</XapFilename>
     <SilverlightManifestTemplate>Properties\AppManifest.xml</SilverlightManifestTemplate>
     <SilverlightAppEntry>GoogleContactSyncWP.App</SilverlightAppEntry>
     <ValidateXaml>true</ValidateXaml>
